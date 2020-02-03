@@ -29,6 +29,7 @@ from __future__ import (unicode_literals, division, print_function,
 import time
 import argparse
 
+children = []
 
 def get_percent(process):
     try:
@@ -45,19 +46,18 @@ def get_memory(process):
 
 
 def all_children(pr):
-    processes = []
-    children = []
+    global children
+
     try:
-        children = pr.children()
+        children_of_pr = pr.children(True)
     except AttributeError:
-        children = pr.get_children()
+        children_of_pr = pr.get_children(True)
     except Exception:  # pragma: no cover
         pass
-
-    for child in children:
-        processes.append(child)
-        processes += all_children(child)
-    return processes
+    for child in children_of_pr:
+        if child not in children:
+            children.append(child)
+    return children
 
 
 def main():
@@ -174,7 +174,8 @@ def monitor(pid, logfile=None, plot=None, duration=None, interval=None,
 
             # Get information for children
             if include_children:
-                for child in all_children(pr):
+                children = all_children(pr)
+                for child in children:
                     try:
                         current_cpu += get_percent(child)
                         current_mem = get_memory(child)
@@ -230,5 +231,3 @@ def monitor(pid, logfile=None, plot=None, duration=None, interval=None,
             ax2.set_ylabel('Real Memory (MB)', color='b')
 
             ax.grid()
-
-            fig.savefig(plot)
